@@ -52,9 +52,9 @@ exports.Journey = mongoose.model('Journey', {
 		type: mongoose.Schema.ObjectId,
 		ref: 'Car'
 	},
-	driver: {
-		type: mongoose.Schema.ObjectId,
-		ref: 'User'
+	isDriver: {
+		type: Boolean,
+		default: true
 	},
 	availableSeats: {
 		type: Number,
@@ -64,12 +64,14 @@ exports.Journey = mongoose.model('Journey', {
 	start: {
 		date: Date,
 		human: String,
+		location: String,
 		lat: Number,
 		lng: Number
 	},
 	end: {
 		date: Date, // optional
 		human: String,
+		location: String,
 		lat: Number,
 		lng: Number
 	},
