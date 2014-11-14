@@ -5,7 +5,8 @@ var should = require('../shouldbe'),
 
 exports.router = function (app) {
 	app.post('/journeys', create)
-		.get('/journeys', getAll);
+		.get('/journeys', getAll)
+		.get('/journeys/my', getMy);
 }
 
 function create (req, res) {
@@ -71,9 +72,15 @@ function create (req, res) {
 
 function getAll (req, res) {
 	models.Journey.find({
+	}, function (err, journeys) {
+		res.send(journeys).end();
+	});
+}
+
+function getMy (req, res) {
+	models.Journey.find({
 		owner: req.user._id
 	}, function (err, journeys) {
-		console.log(journeys);
 		res.send(journeys).end();
 	});
 }

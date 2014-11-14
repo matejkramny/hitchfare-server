@@ -75,7 +75,8 @@ exports.Journey = mongoose.model('Journey', {
 		lat: Number,
 		lng: Number
 	},
-	price: Number // £
+	price: Number, // £
+	deleted: Boolean
 });
 
 exports.JourneyPassenger = mongoose.model('JourneyPassenger', {
