@@ -14,11 +14,11 @@ exports.User = mongoose.model('User', {
 });
 
 exports.Message = mongoose.model('Message', {
-	sender: {
+	list: {
 		type: mongoose.Schema.ObjectId,
-		ref: 'User'
+		ref: 'MessageList'
 	},
-	receiver: {
+	sender: { // either sender or receiver.. Match with MessageList sender/reciever
 		type: mongoose.Schema.ObjectId,
 		ref: 'User'
 	},
@@ -26,6 +26,17 @@ exports.Message = mongoose.model('Message', {
 	sent: {
 		type: Date,
 		default: Date.now
+	}
+});
+
+exports.MessageList = mongoose.model('MessageList', {
+	sender: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'User'
+	},
+	receiver: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'User'
 	}
 });
 

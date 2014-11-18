@@ -52,7 +52,9 @@ app.use(function (req, res, next) {
 	next();
 });
 
-['car', 'journey'].forEach(function (f) {
+require('./params')(app);
+
+['car', 'journey', 'messages', 'me'].forEach(function (f) {
 	require('./api/'+f).router(app);
 });
 
