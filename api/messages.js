@@ -44,7 +44,11 @@ function getMessageLists (req, res) {
 }
 
 function getMessageList (req, res) {
-	res.send(req.messageList).end();
+	req.messageList.populate('sender receiver', function (err) {
+		if (err) throw err;
+
+		res.send(req.messageList).end();
+	});
 }
 
 function sendMessage (req, res) {
