@@ -1,9 +1,12 @@
 
 var should = require('../shouldbe'),
-	models = require('../models')
+	models = require('../models'),
+	server = require('../server'),
+	apn = require('apn');
 
 exports.router = function (app) {
-	app.get('/messages', getMessageList)
+	app.get('/messages', getMessageLists)
+		.get('/messages/list/:message_list', getMessageList)
 		.get('/messages/:message_list', getMessages)
 		.put('/messages/:user', createList)
 		.post('/message/:message_list', sendMessage)
@@ -23,7 +26,7 @@ function getMessages (req, res) {
 	});
 }
 
-function getMessageList (req, res) {
+function getMessageLists (req, res) {
 	models.MessageList.find({
 		$or: [
 			{
@@ -40,15 +43,35 @@ function getMessageList (req, res) {
 	});
 }
 
+function getMessageList (req, res) {
+	res.send(req.messageList).end();
+}
+
 function sendMessage (req, res) {
 	if (!(req.messageList.sender.equals(req.user._id) || req.messageList.receiver.equals(req.user._id))) {
 		return res.status(403).end();
 	}
 
-	(new models.Message(req.body)).save(function (err) {
+	var message = new models.Message(req.body)
+	message.save(function (err) {
 		if (err != null) {
 			throw err;
 		}
+
+		// Send push to recipient
+		var recipient = req.messageList.sender
+		if (req.messageList.sender.equals(req.user._id)) {
+			recipient = req.messageList.receiver
+		}
+
+		var notification = {
+			message: message._id,
+			list: req.messageList._id,
+			sender: req.user._id,
+			receiver: recipient,
+			read: false
+		};
+		sendNotification(notification, req.user, message);
 
 		res.status(201).end();
 	})
@@ -62,5 +85,42 @@ function createList (req, res) {
 		if (err) throw err;
 
 		res.status(201).end();
+	});
+}
+
+function sendNotification (notification, user, message) {
+	models.Notification.find({
+		receiver: notification.receiver,
+		read: false
+	}).count(function (err, unread) {
+		if (err) throw err;
+
+		models.UserDevice.find({
+			user: notification.receiver
+		}).exec(function (err, devices) {
+			if (err) throw err;
+			if (devices.length == 0) return;
+
+			var notif = new apn.Notification();
+			notif.expiry = Math.floor(Date.now() / 1000) + 3600;
+			notif.badge = unread + 1;
+			notif.sound = "ping.aiff";
+			notif.alert = user.name + ": " + message.message;
+			notif.payload = {
+				notification: notification._id,
+				list: notification.list,
+				message: notification.message,
+				sender: notification.sender
+			};
+
+			for (var i = 0; i < devices.length; i++) {
+				var notModel = new models.Notification(notification);
+				notModel.device = devices[i]._id
+				notModel.save();
+
+				var device = new apn.Device(devices[i].token)
+				server.apn.pushNotification(notif, device);
+			}
+		});
 	});
 }

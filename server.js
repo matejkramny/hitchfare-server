@@ -6,7 +6,19 @@ var express = require('express'),
 	should = require('./shouldbe'),
 	session = require('express-session'),
 	passport = require('passport'),
-	MongoStore = require('connect-mongo')(session);
+	MongoStore = require('connect-mongo')(session),
+	apn = require('apn');
+
+var dir = 'development';
+if (process.env.NODE_ENV == 'production') {
+	dir = 'production';
+}
+
+var apnConn = new apn.Connection({
+	cert: __dirname + "/certs/" + dir + "/cert.pem",
+	key: __dirname + "/certs/" + dir + "/key.pem",
+});
+exports.apn = apnConn;
 
 exports.app = app;
 

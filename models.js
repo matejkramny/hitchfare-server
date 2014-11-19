@@ -13,6 +13,38 @@ exports.User = mongoose.model('User', {
 	}
 });
 
+exports.UserDevice = mongoose.model('UserDevice', {
+	token: String,
+	user: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'User'
+	}
+});
+
+exports.Notification = mongoose.model('Notification', {
+	message: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'Message'
+	},
+	list: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'MessageList'
+	},
+	device: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'UserDevice'
+	},
+	sender: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'User'
+	},
+	receiver: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'User'
+	},
+	read: Boolean
+});
+
 exports.Message = mongoose.model('Message', {
 	list: {
 		type: mongoose.Schema.ObjectId,
