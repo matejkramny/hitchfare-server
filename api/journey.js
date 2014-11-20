@@ -72,6 +72,9 @@ function create (req, res) {
 
 function getAll (req, res) {
 	models.Journey.find({
+		owner: {
+			$ne: req.user._id
+		}
 	}, function (err, journeys) {
 		res.send(journeys).end();
 	});
