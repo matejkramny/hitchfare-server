@@ -44,8 +44,8 @@ function getMessageLists (req, res) {
 			models.Message.findOne({
 				list: list._id
 			}).sort('-sent').exec(function (err, message) {
-				console.log(err, message);
-
+				console.log(list, message);
+				
 				if (err || !message) {
 					list.lastMessage = null;
 				} else {
@@ -57,7 +57,6 @@ function getMessageLists (req, res) {
 		}, function (err) {
 			if (err) throw err;
 
-			console.log(list);
 			res.send(list);
 		});
 	});
@@ -85,6 +84,8 @@ function sendMessage (req, res) {
 	if (!(req.messageList.sender.equals(req.user._id) || req.messageList.receiver.equals(req.user._id))) {
 		return res.status(403).end();
 	}
+
+	console.log(req.user.name, "says:", req.body.message);
 
 	var message = new models.Message(req.body)
 	message.save(function (err) {
