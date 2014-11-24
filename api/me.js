@@ -4,6 +4,7 @@ var should = require('../shouldbe'),
 
 exports.router = function (app) {
 	app.get('/me', getSelf)
+		.get('/user/:user', getUser)
 		.put('/device/:token', addDevice)
 }
 
@@ -30,4 +31,8 @@ function addDevice (req, res) {
 
 		res.status(201).end();
 	});
+}
+
+function getUser (req, res) {
+	res.send(req._user);
 }

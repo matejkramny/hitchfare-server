@@ -6,7 +6,8 @@ var should = require('../shouldbe'),
 exports.router = function (app) {
 	app.post('/journeys', create)
 		.get('/journeys', getAll)
-		.get('/journeys/my', getMy);
+		.get('/journeys/my', getMy)
+		.get('/journeys/:user', getUserJourneys)
 }
 
 function create (req, res) {
@@ -83,6 +84,14 @@ function getAll (req, res) {
 function getMy (req, res) {
 	models.Journey.find({
 		owner: req.user._id
+	}, function (err, journeys) {
+		res.send(journeys).end();
+	});
+}
+
+function getUserJourneys (req, res) {
+	models.Journey.find({
+		owner: req._user._id
 	}, function (err, journeys) {
 		res.send(journeys).end();
 	});
