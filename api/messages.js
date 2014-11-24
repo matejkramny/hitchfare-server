@@ -2,7 +2,8 @@
 var should = require('../shouldbe'),
 	models = require('../models'),
 	server = require('../server'),
-	apn = require('apn');
+	apn = require('apn'),
+	async = require('async');
 
 exports.router = function (app) {
 	app.get('/messages', getMessageLists)
@@ -39,7 +40,22 @@ function getMessageLists (req, res) {
 	}).populate('sender receiver').exec(function (err, list) {
 		if (err) throw err;
 
-		res.send(list);
+		async.each(function (list, cb) {
+			models.Message.findOne({
+				list: list._id
+			}).sort('-sent').exec(function (err, message) {
+				if (err || !message) {
+					list.lastMessage = null;
+				} else {
+					list.lastMessage = message;
+				}
+
+				cb();
+			});
+		}, function () {
+			console.log(list);
+			res.send(list).end();
+		});
 	});
 }
 
@@ -47,7 +63,17 @@ function getMessageList (req, res) {
 	req.messageList.populate('sender receiver', function (err) {
 		if (err) throw err;
 
-		res.send(req.messageList).end();
+		models.Message.findOne({
+			list: req.messageList._id
+		}).sort('-sent').exec(function (err, message) {
+			if (err || !message) {
+				req.messageList.lastMessage = null;
+			} else {
+				req.messageList.lastMessage = message;
+			}
+
+			res.send(req.messageList).end();
+		});
 	});
 }
 
