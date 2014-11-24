@@ -40,7 +40,7 @@ function getMessageLists (req, res) {
 	}).populate('sender receiver').exec(function (err, list) {
 		if (err) throw err;
 
-		async.each(function (list, cb) {
+		async.each(list, function (list, cb) {
 			models.Message.findOne({
 				list: list._id
 			}).sort('-sent').exec(function (err, message) {
@@ -52,9 +52,11 @@ function getMessageLists (req, res) {
 
 				cb();
 			});
-		}, function () {
+		}, function (err) {
+			if (err) throw err;
+
 			console.log(list);
-			res.send(list).end();
+			res.send(list);
 		});
 	});
 }
@@ -72,7 +74,7 @@ function getMessageList (req, res) {
 				req.messageList.lastMessage = message;
 			}
 
-			res.send(req.messageList).end();
+			res.send(req.messageList);
 		});
 	});
 }
