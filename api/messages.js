@@ -37,13 +37,15 @@ function getMessageLists (req, res) {
 				receiver: req.user._id
 			}
 		]
-	}).populate('sender receiver').exec(function (err, list) {
+	}).populate('sender receiver').lean().exec(function (err, list) {
 		if (err) throw err;
 
 		async.each(list, function (list, cb) {
 			models.Message.findOne({
 				list: list._id
 			}).sort('-sent').exec(function (err, message) {
+				console.log(err, message);
+
 				if (err || !message) {
 					list.lastMessage = null;
 				} else {
