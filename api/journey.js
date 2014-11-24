@@ -1,13 +1,21 @@
 
 var should = require('../shouldbe'),
 	models = require('../models'),
-	mongoose = require('mongoose');
+	mongoose = require('mongoose'),
+	async = require('async');
 
 exports.router = function (app) {
 	app.post('/journeys', create)
 		.get('/journeys', getAll)
 		.get('/journeys/my', getMy)
-		.get('/journeys/:user', getUserJourneys)
+		.get('/journeys/requests', getJourneysRequests)
+		.get('/journeys/myrequests', getMyJourneyRequests)
+		.get('/journeys/user/:user', getUserJourneys)
+		.put('/journey/:journey_id', requestJoinJourney)
+		.get('/journey/:journey_id/passengers', getJourneyPassengers)
+		.get('/journey/:journey_id/requests', getJourneyPassengerRequests)
+		.put('/journey/:journey_id/request/:journey_passenger_id', approvePassenger)
+		.delete('/journey/:journey_id/request/:journey_passenger_id', disApprovePassenger)
 }
 
 function create (req, res) {
@@ -94,5 +102,122 @@ function getUserJourneys (req, res) {
 		owner: req._user._id
 	}, function (err, journeys) {
 		res.send(journeys).end();
+	});
+}
+
+function requestJoinJourney (req, res) {
+	// check if user already passenger
+	models.JourneyPassenger.findOne({
+		journey: req.journey._id,
+		user: req.user._id
+	}, function (err, existingPassenger) {
+		if (err) throw err;
+
+		if (existingPassenger) {
+			return res.status(400).end();
+		}
+
+		var passenger = new models.JourneyPassenger({
+			journey: req.journey._id,
+			user: req.user._id
+		});
+
+		passenger.save(function (err) {
+			if (err) throw err;
+
+			res.status(201).end();
+		});
+	});
+}
+
+function getJourneyPassengers (req, res) {
+	models.JourneyPassenger.find({
+		journey: req.journey._id,
+		didApprove: true,
+		approved: true
+	})
+	.sort('-requested')
+	.populate('user')
+	.exec(function (err, passengers) {
+		if (err) throw err;
+
+		res.send(passengers);
+	});
+}
+
+function getJourneyPassengerRequests (req, res) {
+	if (req.journey.owner != req.user._id) {
+		return res.status(403).end();
+	}
+
+	models.JourneyPassenger.find({
+		journey: req.journey._id,
+		didApprove: false
+	})
+	.sort('requested')
+	.populate('user')
+	.exec(function (err, passengers) {
+		if (err) throw err;
+
+		res.send(passengers);
+	});
+}
+
+function approvePassenger (req, res) {
+
+}
+
+function disApprovePassenger (req, res) {
+	
+}
+
+function getJourneysRequests (req, res) {
+	models.Journey.find({
+		owner: req.user._id
+	}, function (err, journeys) {
+		var _ids = [];
+
+		async.each(journeys, function (journey, cb) {
+			_ids.push(journey._id);
+			cb();
+		}, function () {
+
+			models.JourneyPassenger.find({
+				journey: {
+					$in: _ids
+				},
+				didApprove: false
+			})
+			.populate('user journey')
+			.lean()
+			.sort('')
+			.exec(function (err, reqs) {
+				if (err) throw err;
+
+				res.send(reqs);
+			});
+
+		});
+	});
+}
+
+function getMyJourneyRequests (req, res) {
+	models.JourneyPassenger.find({
+		user: req.user._id,
+		$or: [
+			{
+				didApprove: {
+					$exists: false
+				}
+			},
+			{
+				didApprove: false
+			}
+		]
+	})
+	.populate('journey user')
+	.lean()
+	.exec(function (err, requests) {
+		res.send(requests);
 	});
 }

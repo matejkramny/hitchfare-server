@@ -40,4 +40,22 @@ module.exports = function (app) {
 			next();
 		});
 	});
+
+	app.param('journey_id', function (req, res, next, id) {
+		try {
+			id = mongoose.Types.ObjectId(id);
+		} catch (e) {
+			return next("Invalid ID");
+		}
+
+		models.Journey.findOne({
+			_id: id
+		}, function (err, journey) {
+			if (err) throw err;
+
+			req.journey = journey;
+
+			next();
+		});
+	});
 }
