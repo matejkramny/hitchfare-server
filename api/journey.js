@@ -235,12 +235,20 @@ function getJourneysRequests (req, res) {
 			_ids.push(journey._id);
 			cb();
 		}, function () {
-
 			models.JourneyPassenger.find({
 				journey: {
 					$in: _ids
 				},
-				didApprove: false
+				$or: [
+					{
+						didApprove: {
+							$exists: false
+						}
+					},
+					{
+						didApprove: false
+					}
+				]
 			})
 			.populate('user journey')
 			.lean()
