@@ -17,6 +17,10 @@ module.exports = function (app) {
 				throw err;
 			}
 
+			if (user == null) {
+				return res.status(404).end();
+			}
+
 			req._user = user;
 			next();
 		});
@@ -34,6 +38,10 @@ module.exports = function (app) {
 		}, function (err, obj) {
 			if (err != null) {
 				throw err;
+			}
+
+			if (obj == null) {
+				return res.status(404).end();
 			}
 
 			req.messageList = obj;
@@ -55,7 +63,33 @@ module.exports = function (app) {
 
 			req.journey = journey;
 
+			if (journey == null) {
+				return res.status(404).end();
+			}
+
 			next();
 		});
 	});
+
+	app.param('journey_passenger_id', function (req, res, next, id) {
+		try {
+			id = mongoose.Types.ObjectId(id);
+		} catch (e) {
+			return next("Invalid ID");
+		}
+
+		models.JourneyPassenger.findOne({
+			_id: id
+		}, function (err, obj) {
+			if (err) throw err;
+
+			req.journeyPassenger = obj;
+
+			if (obj == null) {
+				return res.status(404).end();
+			}
+
+			next();
+		});
+	})
 }

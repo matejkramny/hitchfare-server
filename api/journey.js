@@ -138,15 +138,22 @@ function getJourneyPassengers (req, res) {
 	})
 	.sort('-requested')
 	.populate('user')
+	.lean()
 	.exec(function (err, passengers) {
 		if (err) throw err;
+
+		for (var i = 0; i < passengers.length; i++) {
+			if (typeof passengers[i].requested == 'object') {
+				passengers[i].requested = passengers[i].requested.getTime()
+			}
+		}
 
 		res.send(passengers);
 	});
 }
 
 function getJourneyPassengerRequests (req, res) {
-	if (req.journey.owner != req.user._id) {
+	if (!req.journey.owner.equals(req.user._id)) {
 		return res.status(403).end();
 	}
 
@@ -159,16 +166,63 @@ function getJourneyPassengerRequests (req, res) {
 	.exec(function (err, passengers) {
 		if (err) throw err;
 
+		for (var i = 0; i < passengers.length; i++) {
+			if (typeof passengers[i].requested == 'object') {
+				passengers[i].requested = passengers[i].requested.getTime()
+			}
+		}
+
 		res.send(passengers);
 	});
 }
 
 function approvePassenger (req, res) {
+	if (!req.journey.owner.equals(req.user._id)) {
+		return res.status(403).end();
+	}
 
+	if (req.journeyPassenger.didApprove == true) {
+		return res.status(400).end();
+	}
+
+	req.journeyPassenger.didApprove = true;
+	req.journeyPassenger.approved = true;
+	req.journeyPassenger.approvedWhen = new Date;
+	req.journeyPassenger.save(function (err) {
+		if (err) throw err;
+		
+		res.status(201).end();
+	});
 }
 
 function disApprovePassenger (req, res) {
-	
+	if (!(req.journey.owner.equals(req.user._id) || req.user._id.equals(req.journeyPassenger.user))) {
+		return res.status(403).end();
+	}
+
+	if (req.journeyPassenger.didApprove == true) {
+		return res.status(400).end();
+	}
+
+	if (req.user._id.equals(req.journeyPassenger.user)) {
+		// delete the request..
+		req.journeyPassenger.remove(function (err) {
+			if (err) throw err;
+
+			res.status(204).end();
+		});
+
+		return;
+	}
+
+	req.journeyPassenger.didApprove = true;
+	req.journeyPassenger.approved = false;
+	req.journeyPassenger.approvedWhen = new Date;
+	req.journeyPassenger.save(function (err) {
+		if (err) throw err;
+
+		res.status(201).end();
+	});
 }
 
 function getJourneysRequests (req, res) {
@@ -194,6 +248,12 @@ function getJourneysRequests (req, res) {
 			.exec(function (err, reqs) {
 				if (err) throw err;
 
+				for (var i = 0; i < reqs.length; i++) {
+					if (typeof reqs[i].requested == 'object') {
+						reqs[i].requested = reqs[i].requested.getTime()
+					}
+				}
+
 				res.send(reqs);
 			});
 
@@ -218,6 +278,12 @@ function getMyJourneyRequests (req, res) {
 	.populate('journey user')
 	.lean()
 	.exec(function (err, requests) {
+		for (var i = 0; i < requests.length; i++) {
+			if (typeof requests[i].requested == 'object') {
+				requests[i].requested = requests[i].requested.getTime()
+			}
+		}
+
 		res.send(requests);
 	});
 }
