@@ -4,7 +4,9 @@ var should = require('../shouldbe'),
 
 exports.router = function (app) {
 	app.post('/cars', createCar)
-		.get('/cars', getAll);
+		.get('/cars', getAll)
+		.put('/car/:car_id', updateCar)
+		.put('/car/:car_id/image', uploadImage)
 }
 
 function createCar (req, res) {
@@ -26,7 +28,9 @@ function createCar (req, res) {
 	car.save(function (err) {
 		if (err) throw err;
 
-		res.status(201).end();
+		res.send({
+			_id: car._id
+		}).end();
 	});
 }
 
@@ -36,4 +40,12 @@ function getAll (req, res) {
 	}, function (err, cars) {
 		res.send(cars).end();
 	});
+}
+
+function updateCar (req, res) {
+	
+}
+
+function uploadImage (req, res) {
+	res.status(500).end();
 }

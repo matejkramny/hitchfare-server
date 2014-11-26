@@ -84,7 +84,9 @@ function getAll (req, res) {
 		owner: {
 			$ne: req.user._id
 		}
-	}, function (err, journeys) {
+	})
+	.sort('-start')
+	.exec(function (err, journeys) {
 		res.send(journeys).end();
 	});
 }
@@ -252,7 +254,7 @@ function getJourneysRequests (req, res) {
 			})
 			.populate('user journey')
 			.lean()
-			.sort('')
+			.sort('-requested')
 			.exec(function (err, reqs) {
 				if (err) throw err;
 

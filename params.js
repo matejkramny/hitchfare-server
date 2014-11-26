@@ -91,5 +91,27 @@ module.exports = function (app) {
 
 			next();
 		});
-	})
+	});
+
+	app.param('car_id', function (req, res, next, id) {
+		try {
+			id = mongoose.Types.ObjectId(id);
+		} catch (e) {
+			return next("Invalid ID");
+		}
+
+		models.Car.findOne({
+			_id: id
+		}, function (err, obj) {
+			if (err) throw err;
+
+			req.car = obj;
+
+			if (obj == null) {
+				return res.status(404).end();
+			}
+
+			next();
+		});
+	});
 }
