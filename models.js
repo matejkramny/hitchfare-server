@@ -82,7 +82,9 @@ exports.Car = mongoose.model('Car', {
 		type: Number,
 		min: 0,
 		max: 9
-	}
+	},
+	description: String,
+	url: String
 });
 
 exports.Journey = mongoose.model('Journey', {

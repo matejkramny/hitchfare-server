@@ -1,6 +1,7 @@
 
 var should = require('../shouldbe'),
-	models = require('../models')
+	models = require('../models'),
+	formidable = require('formidable');
 
 exports.router = function (app) {
 	app.post('/cars', createCar)
@@ -43,9 +44,12 @@ function getAll (req, res) {
 }
 
 function updateCar (req, res) {
-	
+
 }
 
 function uploadImage (req, res) {
-	res.status(500).end();
+	var form = formidable.IncomingForm();
+	form.parse(req, function (err, fields, files) {
+		// do shit. Upload the img to AWS S3, then set the URL of the car to s3.amazonaws.com/a/b/c/d.png
+	});
 }
