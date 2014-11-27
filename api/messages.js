@@ -137,7 +137,7 @@ function sendNotification (notification, user, message) {
 			if (devices.length == 0) return;
 
 			var notif = new apn.Notification();
-			notif.expiry = Math.floor(Date.now() / 1000) + 3600;
+			notif.expiry = Math.floor(Date.now() / 1000) + 86400;
 			notif.badge = unread + 1;
 			notif.sound = "ping.aiff";
 			notif.alert = user.name + ": " + message.message;
@@ -145,7 +145,8 @@ function sendNotification (notification, user, message) {
 				notification: notification._id,
 				list: notification.list,
 				message: notification.message,
-				sender: notification.sender
+				sender: notification.sender,
+				action: 'newMessage'
 			};
 
 			for (var i = 0; i < devices.length; i++) {

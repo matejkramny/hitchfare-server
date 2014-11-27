@@ -16,7 +16,7 @@ function register (req, res) {
 
 	var user = new models.User({
 		email: should(req.body.email).be(String),
-		first_name: should(req.body.email).be(String),
+		first_name: should(req.body.first_name).be(String),
 		id: should(req.body.id).be(String),
 		last_name: should(req.body.last_name).be(String),
 		name: should(req.body.name).be(String),

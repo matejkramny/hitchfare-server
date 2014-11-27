@@ -88,7 +88,6 @@ exports.Car = mongoose.model('Car', {
 });
 
 exports.Journey = mongoose.model('Journey', {
-	name: String,
 	owner: {
 		type: mongoose.Schema.ObjectId,
 		ref: 'User'

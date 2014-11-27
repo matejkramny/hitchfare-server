@@ -2,7 +2,8 @@
 var should = require('../shouldbe'),
 	models = require('../models'),
 	mongoose = require('mongoose'),
-	async = require('async');
+	async = require('async'),
+	apn = require('apn');
 
 exports.router = function (app) {
 	app.post('/journeys', create)
@@ -12,6 +13,7 @@ exports.router = function (app) {
 		.get('/journeys/myrequests', getMyJourneyRequests)
 		.get('/journeys/user/:user', getUserJourneys)
 		.put('/journey/:journey_id', requestJoinJourney)
+		.delete('/journey/:journey_id', deleteJourney)
 		.get('/journey/:journey_id/passengers', getJourneyPassengers)
 		.get('/journey/:journey_id/requests', getJourneyPassengerRequests)
 		.put('/journey/:journey_id/request/:journey_passenger_id', approvePassenger)
@@ -23,7 +25,6 @@ function create (req, res) {
 
 	var journey = {
 		owner: req.user._id,
-		name: should(req.body.name).be(String, true),
 		car: should(req.body.car).be(String, true),
 		isDriver: should(req.body.isDriver).be(Boolean),
 		availableSeats: should(req.body.availableSeats).be(Number),
@@ -83,9 +84,13 @@ function getAll (req, res) {
 	models.Journey.find({
 		owner: {
 			$ne: req.user._id
+		},
+		'start.date': {
+			$gte: (new Date()).getTime()
 		}
 	})
-	.sort('-start')
+	.sort('-start.date')
+	.populate('owner')
 	.exec(function (err, journeys) {
 		res.send(journeys).end();
 	});
@@ -94,7 +99,10 @@ function getAll (req, res) {
 function getMy (req, res) {
 	models.Journey.find({
 		owner: req.user._id
-	}, function (err, journeys) {
+	})
+	.sort('-start.date')
+	.populate('owner')
+	.exec(function (err, journeys) {
 		res.send(journeys).end();
 	});
 }
@@ -102,7 +110,10 @@ function getMy (req, res) {
 function getUserJourneys (req, res) {
 	models.Journey.find({
 		owner: req._user._id
-	}, function (err, journeys) {
+	})
+	.sort('-start.date')
+	.populate('owner')
+	.exec(function (err, journeys) {
 		res.send(journeys).end();
 	});
 }
@@ -128,6 +139,38 @@ function requestJoinJourney (req, res) {
 			if (err) throw err;
 
 			res.status(201).end();
+		});
+
+		req.journey.populate('owner', function (err) {
+			if (err) throw err;
+
+			models.Notification.find({
+				receiver: req.journey.owner._id,
+				read: false
+			}).count(function (err, unread) {
+				models.UserDevice.find({
+					user: req.journey.owner._id
+				}).exec(function (err, devices) {
+					if (err) throw err;
+					if (devices.length == 0) return;
+
+					var notif = new apn.Notification();
+					notif.expiry = Math.floor(Date.now() / 1000) + 86400;
+					notif.badge = unread;
+					notif.sound = "ping.aiff";
+					notif.alert = req.journey.owner.name + " Wants to join your journey!";
+					notif.payload = {
+						journey: req.journey._id,
+						requester: req.journey.owner._id,
+						action: 'journeyRequest'
+					};
+
+					for (var i = 0; i < devices.length; i++) {
+						var device = new apn.Device(devices[i].token)
+						server.apn.pushNotification(notif, device);
+					}
+				});
+			});
 		});
 	});
 }
@@ -195,6 +238,36 @@ function approvePassenger (req, res) {
 		
 		res.status(201).end();
 	});
+
+	req.journey.populate('owner', function (err) {
+		models.Notification.find({
+			receiver: req.journeyPassenger.user,
+			read: false
+		}).count(function (err, unread) {
+			models.UserDevice.find({
+				user: req.journeyPassenger.user
+			}).exec(function (err, devices) {
+				if (err) throw err;
+				if (devices.length == 0) return;
+
+				var notif = new apn.Notification();
+				notif.expiry = Math.floor(Date.now() / 1000) + 86400;
+				notif.badge = unread;
+				notif.sound = "ping.aiff";
+				notif.alert = req.journey.owner.name + " Accepted your journey request!";
+				notif.payload = {
+					journey: req.journey._id,
+					requester: req.journey.owner._id,
+					action: 'journeyJoin'
+				};
+
+				for (var i = 0; i < devices.length; i++) {
+					var device = new apn.Device(devices[i].token)
+					server.apn.pushNotification(notif, device);
+				}
+			});
+		});
+	});
 }
 
 function disApprovePassenger (req, res) {
@@ -224,6 +297,50 @@ function disApprovePassenger (req, res) {
 		if (err) throw err;
 
 		res.status(201).end();
+	});
+
+	req.journeyPassenger.populate('user', function (err) {
+		var sender = req.user
+		var receiver = req.journeyPassenger.user._id;
+		var message = " Rejected your journey request.";
+
+		if (req.user._id.equals(req.journeyPassenger.user)) {
+			receiver = req.user;
+			sender = req.journeyPassenger.user;
+			message = " Cancelled the journey request.";
+		}
+
+		sendRejectRequestNotification(sender, receiver, message);
+	});
+}
+
+function sendRejectRequestNotification (sender, receiver, message) {
+	models.Notification.find({
+		receiver: receiver,
+		read: false
+	}).count(function (err, unread) {
+		models.UserDevice.find({
+			user: receiver
+		}).exec(function (err, devices) {
+			if (err) throw err;
+			if (devices.length == 0) return;
+
+			var notif = new apn.Notification();
+			notif.expiry = Math.floor(Date.now() / 1000) + 86400;
+			notif.badge = unread;
+			notif.sound = "ping.aiff";
+			notif.alert = sender.name + message;
+			notif.payload = {
+				journey: req.journey._id,
+				requester: req.journey.owner._id,
+				action: 'journeyReject'
+			};
+
+			for (var i = 0; i < devices.length; i++) {
+				var device = new apn.Device(devices[i].token)
+				server.apn.pushNotification(notif, device);
+			}
+		});
 	});
 }
 
@@ -286,14 +403,44 @@ function getMyJourneyRequests (req, res) {
 		]
 	})
 	.populate('journey user')
-	.lean()
 	.exec(function (err, requests) {
-		for (var i = 0; i < requests.length; i++) {
-			if (typeof requests[i].requested == 'object') {
-				requests[i].requested = requests[i].requested.getTime()
-			}
-		}
+		console.log(requests);
 
-		res.send(requests);
+		async.each(requests, function (request, cb) {
+			request.journey.populate('owner', function (err) {
+				cb(err);
+			});
+		}, function (err) {
+			var reqs = []
+
+			for (var i = 0; i < requests.length; i++) {
+				reqs.push(requests[i].toObject());
+
+				if (typeof reqs[i].requested == 'object') {
+					reqs[i].requested = reqs[i].requested.getTime()
+				}
+			}
+
+			res.send(reqs);
+		});
+	});
+}
+
+function deleteJourney (req, res) {
+	if (!req.journey.owner.equals(req.user._id)) {
+		return res.status(403).end();
+	}
+
+	// Delete all journey reqs
+	models.JourneyPassenger.remove({
+		journey: req.journey._id
+	}, function (err) {
+		if (err) throw err;
+	});
+
+	req.journey.remove(function (err) {
+		if (err) throw err;
+
+		res.status(204).end();
 	});
 }
