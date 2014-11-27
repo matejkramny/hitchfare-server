@@ -3,6 +3,7 @@ var should = require('../shouldbe'),
 	models = require('../models'),
 	mongoose = require('mongoose'),
 	async = require('async'),
+	server = require('../server'),
 	apn = require('apn');
 
 exports.router = function (app) {
