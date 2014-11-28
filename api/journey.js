@@ -36,7 +36,6 @@ function create (req, res) {
 			lng: should(req.body.start.lng).be(Number)
 		},
 		end: {
-			date: should(req.body.end.date).be(Number),
 			location: should(req.body.end.location).be(String, true),
 			lat: should(req.body.end.lat).be(Number),
 			lng: should(req.body.end.lng).be(Number)
@@ -46,9 +45,6 @@ function create (req, res) {
 
 	if (journey.start.date != null) {
 		journey.start.date = new Date(Math.floor(journey.start.date * 1000));
-	}
-	if (journey.end.date != null) {
-		journey.end.date = new Date(Math.floor(journey.end.date * 1000));
 	}
 
 	try {
@@ -64,7 +60,6 @@ function create (req, res) {
 		journey.start.location == null ||
 		//journey.start.lat == null ||
 		//journey.start.lng == null ||
-		journey.end.date == null ||
 		journey.end.location == null ||
 		//journey.end.lat == null ||
 		//journey.end.lng == null ||
@@ -98,13 +93,37 @@ function getAll (req, res) {
 }
 
 function getMy (req, res) {
-	models.Journey.find({
-		owner: req.user._id
-	})
-	.sort('-start.date')
-	.populate('owner')
-	.exec(function (err, journeys) {
-		res.send(journeys).end();
+	models.JourneyPassenger.find({
+		user: req.user._id,
+		approved: true,
+		didApprove: true
+	}, function (err, passengers) {
+		if (err) throw err;
+
+		var journeyIds = [];
+		for (var i = 0; i < passengers.length; i++) {
+			journeyIds.push(passengers[i].journey);
+		}
+
+		models.Journey.find({
+			$or: [
+				{
+					owner: req.user._id
+				},
+				{
+					_id: {
+						$in: journeyIds
+					}
+				}
+			]
+		})
+		.sort('-start.date')
+		.populate('owner')
+		.exec(function (err, journeys) {
+			if (err) throw err;
+
+			res.send(journeys);
+		});
 	});
 }
 
@@ -183,7 +202,7 @@ function getJourneyPassengers (req, res) {
 		approved: true
 	})
 	.sort('-requested')
-	.populate('user')
+	.populate('user journey')
 	.lean()
 	.exec(function (err, passengers) {
 		if (err) throw err;
@@ -259,7 +278,7 @@ function approvePassenger (req, res) {
 				notif.payload = {
 					journey: req.journey._id,
 					requester: req.journey.owner._id,
-					action: 'journeyJoin'
+					action: 'requestApprove'
 				};
 
 				for (var i = 0; i < devices.length; i++) {
@@ -277,11 +296,24 @@ function disApprovePassenger (req, res) {
 	}
 
 	if (req.journeyPassenger.didApprove == true) {
-		return res.status(400).end();
+		// Remove the passenger.
+		if (req.user._id.equals(req.journeyPassenger.user)) {
+			sendRejectRequestNotification(req.user, req.journey.owner, " Is no longer passenger on your journey.", req.journey);
+		} else {
+			sendRejectRequestNotification(req.user, req.journeyPassenger.user, " Removed your from passenger list.", req.journey);
+		}
+
+		req.journeyPassenger.remove(function (err) {
+			if (err) throw err;
+
+			res.status(204).end();
+		});
 	}
 
 	if (req.user._id.equals(req.journeyPassenger.user)) {
 		// delete the request..
+		sendRejectRequestNotification(req.user, req.journey.owner, " Cancelled the journey request.", req.journey);
+		
 		req.journeyPassenger.remove(function (err) {
 			if (err) throw err;
 
@@ -301,21 +333,11 @@ function disApprovePassenger (req, res) {
 	});
 
 	req.journeyPassenger.populate('user', function (err) {
-		var sender = req.user
-		var receiver = req.journeyPassenger.user._id;
-		var message = " Rejected your journey request.";
-
-		if (req.user._id.equals(req.journeyPassenger.user)) {
-			receiver = req.user;
-			sender = req.journeyPassenger.user;
-			message = " Cancelled the journey request.";
-		}
-
-		sendRejectRequestNotification(sender, receiver, message);
+		sendRejectRequestNotification(req.user, req.journeyPassenger.user._id, " Rejected your journey request.", req.journey);
 	});
 }
 
-function sendRejectRequestNotification (sender, receiver, message) {
+function sendRejectRequestNotification (sender, receiver, message, journey) {
 	models.Notification.find({
 		receiver: receiver,
 		read: false
@@ -332,9 +354,8 @@ function sendRejectRequestNotification (sender, receiver, message) {
 			notif.sound = "ping.aiff";
 			notif.alert = sender.name + message;
 			notif.payload = {
-				journey: req.journey._id,
-				requester: req.journey.owner._id,
-				action: 'journeyReject'
+				journey: journey._id,
+				action: 'requestReject'
 			};
 
 			for (var i = 0; i < devices.length; i++) {

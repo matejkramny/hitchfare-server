@@ -113,8 +113,6 @@ exports.Journey = mongoose.model('Journey', {
 		lng: Number
 	},
 	end: {
-		date: Date, // optional
-		human: String,
 		location: String,
 		lat: Number,
 		lng: Number
