@@ -31,20 +31,23 @@ function create (req, res) {
 		availableSeats: should(req.body.availableSeats).be(Number),
 		start: {
 			date: should(req.body.start.date).be(Number),
-			location: should(req.body.start.location).be(String, true),
-			lat: should(req.body.start.lat).be(Number),
-			lng: should(req.body.start.lng).be(Number)
+			location: should(req.body.start.location).be(String, true)
 		},
 		end: {
-			location: should(req.body.end.location).be(String, true),
-			lat: should(req.body.end.lat).be(Number),
-			lng: should(req.body.end.lng).be(Number)
+			location: should(req.body.end.location).be(String, true)
 		},
 		price: should(req.body.price).be(Number)
 	};
 
 	if (journey.start.date != null) {
 		journey.start.date = new Date(Math.floor(journey.start.date * 1000));
+	}
+
+	if (req.body.start.loc instanceof Array && req.body.start.loc.length == 2) {
+		journey.start.loc = req.body.start.loc
+	}
+	if (req.body.end.loc instanceof Array && req.body.end.loc.length == 2) {
+		journey.end.loc = req.body.end.loc
 	}
 
 	try {
@@ -58,11 +61,7 @@ function create (req, res) {
 		journey.availableSeats == null ||
 		journey.start.date == null ||
 		journey.start.location == null ||
-		//journey.start.lat == null ||
-		//journey.start.lng == null ||
 		journey.end.location == null ||
-		//journey.end.lat == null ||
-		//journey.end.lng == null ||
 		journey.price == null) {
 		console.log("error:", journey);
 
@@ -77,16 +76,35 @@ function create (req, res) {
 }
 
 function getAll (req, res) {
-	models.Journey.find({
+	var q = {
 		owner: {
 			$ne: req.user._id
 		},
 		'start.date': {
 			$gte: (new Date()).getTime()
 		}
-	})
-	.sort('-start.date')
-	.populate('owner')
+	};
+
+	var isLocationQuery = false;
+
+	console.log(req.query, req.body)
+	if (typeof req.query.lat == 'string' && typeof req.query.lng == 'string') {
+		isLocationQuery = true;
+
+		q['start.loc'] = {
+			$near: [parseFloat(req.query.lng), parseFloat(req.query.lat)],
+			$maxDistance: 20 / 111.12 // 10 km * meters * Pi / 180 = 10km in Radians
+		}
+		console.log(q);
+	}
+
+	var query = models.Journey.find(q)
+
+	if (isLocationQuery == false) {
+		query = query.sort('-start.date');
+	}
+	
+	query.populate('owner')
 	.exec(function (err, journeys) {
 		res.send(journeys).end();
 	});

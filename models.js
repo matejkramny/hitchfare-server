@@ -109,13 +109,17 @@ exports.Journey = mongoose.model('Journey', {
 		date: Date,
 		human: String,
 		location: String,
-		lat: Number,
-		lng: Number
+		loc: {
+			type: [Number],
+			index: '2d'
+		}
 	},
 	end: {
 		location: String,
-		lat: Number,
-		lng: Number
+		loc: {
+			type: [Number],
+			index: '2d'
+		}
 	},
 	price: Number, // £
 	deleted: Boolean
