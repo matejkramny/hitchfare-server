@@ -14,6 +14,7 @@ exports.router = function (app) {
 		.get('/journeys/myrequests', getMyJourneyRequests)
 		.get('/journeys/user/:user', getUserJourneys)
 		.put('/journey/:journey_id', requestJoinJourney)
+		.post('/journey/:journey_id', updateJourney)
 		.delete('/journey/:journey_id', deleteJourney)
 		.get('/journey/:journey_id/passengers', getJourneyPassengers)
 		.get('/journey/:journey_id/requests', getJourneyPassengerRequests)
@@ -69,6 +70,58 @@ function create (req, res) {
 	}
 
 	(new models.Journey(journey)).save(function (err) {
+		if (err) throw err;
+
+		res.status(201).end();
+	});
+}
+
+function updateJourney (req, res) {
+	console.log(req.body);
+
+	var journey = req.journey;
+	journey.car = should(req.body.car).be(String, true);
+	journey.isDriver = should(req.body.isDriver).be(Boolean);
+	journey.availableSeats = should(req.body.availableSeats).be(Number);
+	journey.start = {
+		date: should(req.body.start.date).be(Number),
+		location: should(req.body.start.location).be(String, true)
+	};
+	journey.end = {
+		location: should(req.body.end.location).be(String, true)
+	};
+	journey.price = should(req.body.price).be(Number);
+
+	if (journey.start.date != null) {
+		journey.start.date = new Date(Math.floor(journey.start.date * 1000));
+	}
+
+	if (req.body.start.loc instanceof Array && req.body.start.loc.length == 2) {
+		journey.start.loc = req.body.start.loc
+	}
+	if (req.body.end.loc instanceof Array && req.body.end.loc.length == 2) {
+		journey.end.loc = req.body.end.loc
+	}
+
+	try {
+		journey.car = mongoose.Types.ObjectId(journey.car);
+	} catch (e) {
+		journey.car = null;
+	}
+
+	if (journey.car == null ||
+		journey.isDriver == null ||
+		journey.availableSeats == null ||
+		journey.start.date == null ||
+		journey.start.location == null ||
+		journey.end.location == null ||
+		journey.price == null) {
+		console.log("error:", journey);
+
+		return res.status(400).end();
+	}
+
+	journey.save(function (err) {
 		if (err) throw err;
 
 		res.status(201).end();

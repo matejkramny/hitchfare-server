@@ -11,6 +11,7 @@ exports.router = function (app) {
 		.get('/messages/:message_list', getMessages)
 		.put('/messages/:user', createList)
 		.post('/message/:message_list', sendMessage)
+		.delete('/message/:message_list', deleteMessageList);
 }
 
 function getMessages (req, res) {
@@ -157,6 +158,24 @@ function sendNotification (notification, user, message) {
 				var device = new apn.Device(devices[i].token)
 				server.apn.pushNotification(notif, device);
 			}
+		});
+	});
+}
+
+function deleteMessageList (req, res) {
+	if (!(req.messageList.sender.equals(req.user._id) || req.messageList.receiver.equals(req.user._id))) {
+		return res.status(403).end();
+	}
+
+	models.Message.remove({
+		list: req.messageList._id
+	}, function (err) {
+		if (err) throw err;
+
+		req.messageList.remove(function (err) {
+			if (err) throw err;
+
+			res.status(204).end();
 		});
 	});
 }
