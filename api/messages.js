@@ -114,13 +114,19 @@ function sendMessage (req, res) {
 }
 
 function createList (req, res) {
-	new models.MessageList({
+	var list = new models.MessageList({
 		sender: req.user._id,
 		receiver: req._user._id
-	}).save(function (err) {
+	});
+
+	list.save(function (err) {
 		if (err) throw err;
 
-		res.status(201).end();
+		list.populate('sender receiver', function (err) {
+			if (err) throw err;
+
+			res.send(list);
+		});
 	});
 }
 
