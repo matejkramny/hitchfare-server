@@ -5,6 +5,7 @@ var express = require('express'),
 	models = require('./models'),
 	should = require('./shouldbe'),
 	session = require('express-session'),
+	MongoStore = require('connect-mongo')(session),
 	passport = require('passport'),
 	MongoStore = require('connect-mongo')(session),
 	apn = require('apn'),
@@ -48,7 +49,10 @@ app.use(session({
 	cookie: {
 		secure: false,
 		//maxAge: 604800000
-	}
+	},
+	store: new MongoStore({
+		db: mongoose.connection.db
+	})
 }));
 
 app.use(passport.initialize());
