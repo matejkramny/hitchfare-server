@@ -7,7 +7,8 @@ var express = require('express'),
 	session = require('express-session'),
 	passport = require('passport'),
 	MongoStore = require('connect-mongo')(session),
-	apn = require('apn');
+	apn = require('apn'),
+	fs = require('fs');
 
 var dir = 'development';
 if (process.env.NODE_ENV == 'production') {
@@ -54,6 +55,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 require('./api/register').router(app);
+app.get('/terms', function (req, res) {
+	fs.createReadStream(__dirname + "/phempto_terms.html").pipe(res);
+})
 
 app.use(function (req, res, next) {
 	if (!req.user) {

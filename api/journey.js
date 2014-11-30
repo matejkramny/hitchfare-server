@@ -59,7 +59,7 @@ function create (req, res) {
 		journey.car = null;
 	}
 
-	if (journey.car == null ||
+	if ((journey.isDriver == true && journey.car == null) ||
 		journey.isDriver == null ||
 		journey.availableSeats == null ||
 		journey.start.date == null ||
@@ -131,12 +131,15 @@ function updateJourney (req, res) {
 }
 
 function getAll (req, res) {
+	var now = new Date();
+	now.setHours(0, 0, 0, 0);
+
 	var q = {
 		owner: {
 			$ne: req.user._id
 		},
 		'start.date': {
-			$gte: (new Date()).getTime()
+			$gte: now.getTime()
 		}
 	};
 
@@ -148,9 +151,8 @@ function getAll (req, res) {
 
 		q['start.loc'] = {
 			$near: [parseFloat(req.query.lng), parseFloat(req.query.lat)],
-			$maxDistance: 20 / 111.12 // 10 km * meters * Pi / 180 = 10km in Radians
+			//$maxDistance: 20 / 111.12 // 10 km * meters * Pi / 180 = 10km in Radians
 		}
-		console.log(q);
 	}
 
 	var query = models.Journey.find(q)
@@ -581,7 +583,12 @@ function getReviewableJourneys (req, res) {
 			ps.push(passengers[i]);
 		}
 
-		res.send(ps);
+		async.each(ps, function (p, cb) {
+			p.populate('owner', cb)
+		}, function (err) {
+			if (err) throw err;
+			res.send(ps);
+		});
 	});
 }
 
