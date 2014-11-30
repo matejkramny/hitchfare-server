@@ -144,7 +144,7 @@ exports.JourneyPassenger = mongoose.model('JourneyPassenger', {
 	rating: {
 		type: Number,
 		min: 1,
-		max: 10,
+		max: 5,
 		default: 1
 	},
 	requested: {

@@ -13,6 +13,7 @@ exports.router = function (app) {
 		.get('/journeys/requests', getJourneysRequests)
 		.get('/journeys/myrequests', getMyJourneyRequests)
 		.get('/journeys/user/:user', getUserJourneys)
+		.get('/journeys/reviewable', getReviewableJourneys)
 		.put('/journey/:journey_id', requestJoinJourney)
 		.post('/journey/:journey_id', updateJourney)
 		.delete('/journey/:journey_id', deleteJourney)
@@ -20,6 +21,7 @@ exports.router = function (app) {
 		.get('/journey/:journey_id/requests', getJourneyPassengerRequests)
 		.put('/journey/:journey_id/request/:journey_passenger_id', approvePassenger)
 		.delete('/journey/:journey_id/request/:journey_passenger_id', disApprovePassenger)
+		.put('/journey/:journey_id/request/:journey_passenger_id/review/:review_stars', rateJourney)
 }
 
 function create (req, res) {
@@ -535,5 +537,69 @@ function deleteJourney (req, res) {
 		if (err) throw err;
 
 		res.status(204).end();
+	});
+}
+
+function getReviewableJourneys (req, res) {
+	var now = (new Date()).getTime()
+	var dayAgo = (new Date(now - 86400 * 1000)).getTime()
+
+	models.JourneyPassenger.find({
+		user: req.user._id,
+		approved: true,
+		didApprove: true,
+		$or: [
+			{
+				rated: {
+					$exists: false
+				}
+			},
+			{
+				rated: false
+			}
+		]
+	})
+	.populate({
+		path: 'journey',
+		match: {
+			'start.date': {
+				$lte: dayAgo
+			}
+		}
+	})
+	.populate('user')
+	.exec(function (err, passengers) {
+		if (err) throw err;
+
+		var ps = [];
+
+		for (var i = 0; i < passengers.length; i++) {
+			if (passengers[i].journey == null) {
+				continue;
+			}
+
+			ps.push(passengers[i]);
+		}
+
+		res.send(ps);
+	});
+}
+
+function rateJourney (req, res) {
+	if (req.journeyPassenger.user.equals(req.user._id) == false || req.journeyPassenger.rated == true) {
+		return res.status(400).end();
+	}
+
+	var stars = req.params.review_stars;
+	if (stars < 1 || stars > 5) {
+		return res.status(400).end();
+	}
+
+	req.journeyPassenger.rating = stars;
+	req.journeyPassenger.rated = true;
+	req.journeyPassenger.save(function (err) {
+		if (err) throw err;
+
+		res.status(201).end();
 	});
 }
