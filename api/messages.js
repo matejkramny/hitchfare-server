@@ -9,6 +9,7 @@ exports.router = function (app) {
 	app.get('/messages', getMessageLists)
 		.get('/messages/list/:message_list', getMessageList)
 		.get('/messages/:message_list', getMessages)
+		.put('/messages/:message_list/read', setReadThread)
 		.put('/messages/:user', createList)
 		.post('/message/:message_list', sendMessage)
 		.delete('/message/:message_list', deleteMessageList);
@@ -173,6 +174,12 @@ function deleteMessageList (req, res) {
 		return res.status(403).end();
 	}
 
+	models.Notification.remove({
+		list: req.messageList._id
+	}, function (err) {
+		if (err) throw err;
+	});
+
 	models.Message.remove({
 		list: req.messageList._id
 	}, function (err) {
@@ -182,6 +189,29 @@ function deleteMessageList (req, res) {
 			if (err) throw err;
 
 			res.status(204).end();
+		});
+	});
+}
+
+function setReadThread (req, res) {
+	models.Notification.update({
+		list: req.messageList._id
+	}, {
+		$set: {
+			read: true
+		}
+	}, function (err) {
+		if (err) throw err;
+
+		models.Notification.find({
+			receiver: req.user._id,
+			read: false
+		}).count(function (err, unread) {
+			if (err) throw err;
+
+			res.send({
+				unreadCount: unread
+			});
 		});
 	});
 }
