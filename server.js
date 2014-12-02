@@ -61,7 +61,10 @@ app.use(passport.session());
 require('./api/register').router(app);
 app.get('/terms', function (req, res) {
 	fs.createReadStream(__dirname + "/phempto_terms.html").pipe(res);
-})
+});
+app.get('/privacy', function (req, res) {
+	fs.createReadStream(__dirname + "/phempto_privacy.html").pipe(res);
+});
 
 app.use(function (req, res, next) {
 	if (!req.user) {

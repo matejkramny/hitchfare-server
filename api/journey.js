@@ -146,12 +146,27 @@ function getAll (req, res) {
 	var isLocationQuery = false;
 
 	console.log(req.query, req.body)
-	if (typeof req.query.lat == 'string' && typeof req.query.lng == 'string') {
+	if (typeof req.query.lat == 'string' && typeof req.query.lng == 'string' || typeof req.query.startLat == 'string' && typeof req.query.startLng == 'string') {
 		isLocationQuery = true;
 
+		var lat = parseFloat(req.query.lat);
+		var lng = parseFloat(req.query.lng);
+
+		if (typeof req.query.startLat == 'string' && typeof req.query.startLng == 'string') {
+			lat = parseFloat(req.query.startLat);
+			lng = parseFloat(req.query.startLng);
+		}
+
 		q['start.loc'] = {
-			$near: [parseFloat(req.query.lng), parseFloat(req.query.lat)],
+			$near: [lng, lat],
 			//$maxDistance: 20 / 111.12 // 10 km * meters * Pi / 180 = 10km in Radians
+		}
+	}
+	if (typeof req.query.startLat == 'string' && typeof req.query.startLng == 'string') {
+		isLocationQuery = true;
+
+		q['end.loc'] = {
+			$near: [parseFloat(req.query.startLat), parseFloat(req.query.startLng)]
 		}
 	}
 
@@ -159,6 +174,14 @@ function getAll (req, res) {
 
 	if (isLocationQuery == false) {
 		query = query.sort('-start.date');
+	}
+
+	if (typeof req.query.startDate == 'number') {
+		var startDate = new Date(req.query.startDate)
+		q['start.date'] = {
+			$gte: startDate.getTime(),
+			$lt: startDate.getTime() + 86400 * 1000 // + 1 day
+		}
 	}
 	
 	query.populate('owner')
@@ -584,7 +607,7 @@ function getReviewableJourneys (req, res) {
 		}
 
 		async.each(ps, function (p, cb) {
-			p.populate('owner', cb)
+			p.journey.populate('owner', cb)
 		}, function (err) {
 			if (err) throw err;
 			res.send(ps);

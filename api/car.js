@@ -78,6 +78,13 @@ function updateCar (req, res) {
 function uploadImage (req, res) {
 	var form = formidable.IncomingForm();
 	form.parse(req, function (err, fields, files) {
+		var path;
+		try {
+			path = files.picture.path;
+		} catch (e) {
+			return res.status(400).end();
+		}
+
 		async.parallel([
 			function (cb) {
 				models.Car.update({
@@ -93,7 +100,7 @@ function uploadImage (req, res) {
 				});
 			},
 			function (cb) {
-				fs.readFile(files.picture.path, function (err, image) {
+				fs.readFile(path, function (err, image) {
 					var data = {
 						Bucket: "fareshout-public",
 						Key: req.car._id + ".png",
