@@ -146,27 +146,29 @@ function getAll (req, res) {
 	var isLocationQuery = false;
 
 	console.log(req.query, req.body)
-	if (typeof req.query.lat == 'string' && typeof req.query.lng == 'string' || typeof req.query.startLat == 'string' && typeof req.query.startLng == 'string') {
+	if (typeof req.query.lat == 'string' && typeof req.query.lng == 'string' && typeof req.query.startLocation != 'string') {
 		isLocationQuery = true;
-
 		var lat = parseFloat(req.query.lat);
 		var lng = parseFloat(req.query.lng);
-
-		if (typeof req.query.startLat == 'string' && typeof req.query.startLng == 'string') {
-			lat = parseFloat(req.query.startLat);
-			lng = parseFloat(req.query.startLng);
-		}
 
 		q['start.loc'] = {
 			$near: [lng, lat],
 			//$maxDistance: 20 / 111.12 // 10 km * meters * Pi / 180 = 10km in Radians
 		}
 	}
-	if (typeof req.query.startLat == 'string' && typeof req.query.startLng == 'string') {
-		isLocationQuery = true;
 
-		q['end.loc'] = {
-			$near: [parseFloat(req.query.startLat), parseFloat(req.query.startLng)]
+	if (typeof req.query.startLocation == 'string') {
+		q['start.location'] = req.query.startLocation;
+	}
+	if (typeof req.query.endLocation == 'string') {
+		q['end.location'] = req.query.endLocation;
+	}
+
+	if (typeof req.query.startDate == 'string') {
+		var startDate = new Date(parseInt(req.query.startDate))
+		q['start.date'] = {
+			$gte: startDate.getTime(),
+			$lt: startDate.getTime() + 86400 * 1000 // + 1 day
 		}
 	}
 
@@ -176,16 +178,10 @@ function getAll (req, res) {
 		query = query.sort('-start.date');
 	}
 
-	if (typeof req.query.startDate == 'number') {
-		var startDate = new Date(req.query.startDate)
-		q['start.date'] = {
-			$gte: startDate.getTime(),
-			$lt: startDate.getTime() + 86400 * 1000 // + 1 day
-		}
-	}
-	
 	query.populate('owner')
 	.exec(function (err, journeys) {
+		if (err) throw err;
+
 		res.send(journeys).end();
 	});
 }
@@ -276,10 +272,10 @@ function requestJoinJourney (req, res) {
 					notif.expiry = Math.floor(Date.now() / 1000) + 86400;
 					notif.badge = unread;
 					notif.sound = "ping.aiff";
-					notif.alert = req.journey.owner.name + " Wants to join your journey!";
+					notif.alert = req.user.name + " Wants to join your journey!";
 					notif.payload = {
 						journey: req.journey._id,
-						requester: req.journey.owner._id,
+						requester: req.user._id,
 						action: 'journeyRequest'
 					};
 
@@ -375,7 +371,7 @@ function approvePassenger (req, res) {
 				notif.alert = req.journey.owner.name + " Accepted your journey request!";
 				notif.payload = {
 					journey: req.journey._id,
-					requester: req.journey.owner._id,
+					requester: req.user._id,
 					action: 'requestApprove'
 				};
 
