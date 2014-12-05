@@ -47,7 +47,7 @@ function getMessageLists (req, res) {
 				list: list._id
 			}).sort('-sent').exec(function (err, message) {
 				console.log(list, message);
-				
+
 				if (err || !message) {
 					list.lastMessage = null;
 				} else {
@@ -194,24 +194,13 @@ function deleteMessageList (req, res) {
 }
 
 function setReadThread (req, res) {
-	models.Notification.update({
-		list: req.messageList._id
-	}, {
-		$set: {
-			read: true
-		}
+	models.Notification.remove({
+		receiver: req.user._id
 	}, function (err) {
 		if (err) throw err;
 
-		models.Notification.find({
-			receiver: req.user._id,
-			read: false
-		}).count(function (err, unread) {
-			if (err) throw err;
-
-			res.send({
-				unreadCount: unread
-			});
+		res.send({
+			unreadCount: 0
 		});
 	});
 }

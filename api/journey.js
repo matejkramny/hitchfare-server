@@ -344,13 +344,27 @@ function approvePassenger (req, res) {
 		return res.status(400).end();
 	}
 
+	if (req.journey.availableSeats <= 0) {
+		return res.status(400).end();
+	}
+
 	req.journeyPassenger.didApprove = true;
 	req.journeyPassenger.approved = true;
 	req.journeyPassenger.approvedWhen = new Date;
 	req.journeyPassenger.save(function (err) {
 		if (err) throw err;
-		
+
 		res.status(201).end();
+	});
+
+	models.Journey.update({
+		_id: req.journey._id
+	}, {
+		$inc: {
+			availableSeats: -1
+		}
+	}, function (err) {
+		if (err) throw err;
 	});
 
 	req.journey.populate('owner', function (err) {
@@ -391,6 +405,17 @@ function disApprovePassenger (req, res) {
 
 	if (req.journeyPassenger.didApprove == true) {
 		// Remove the passenger.
+
+		models.Journey.update({
+			_id: req.journey._id
+		}, {
+			$inc: {
+				availableSeats: 1
+			}
+		}, function (err) {
+			if (err) throw err;
+		});
+
 		if (req.user._id.equals(req.journeyPassenger.user)) {
 			sendRejectRequestNotification(req.user, req.journey.owner, " Is no longer passenger on your journey.", req.journey);
 		} else {
@@ -402,12 +427,14 @@ function disApprovePassenger (req, res) {
 
 			res.status(204).end();
 		});
+
+		return;
 	}
 
 	if (req.user._id.equals(req.journeyPassenger.user)) {
 		// delete the request..
 		sendRejectRequestNotification(req.user, req.journey.owner, " Cancelled the journey request.", req.journey);
-		
+
 		req.journeyPassenger.remove(function (err) {
 			if (err) throw err;
 
