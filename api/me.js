@@ -5,9 +5,10 @@ var should = require('../shouldbe'),
 exports.router = function (app) {
 	app.get('/me', getSelf)
 		.get('/user/:user', getUser)
+		.get('/user/:user/mutualFriends', getMutualFriends)
 		.put('/device/:token', addDevice)
-		.get('/rating', getRating)
-		.get('/rating/:journey_id', getRatingForJourney);
+		.get('/rating/user/:user', getRating)
+		.get('/rating/journey/:journey_id', getRatingForJourney);
 }
 
 function getSelf (req, res) {
@@ -41,7 +42,7 @@ function getUser (req, res) {
 
 function getRating (req, res) {
 	models.Journey.find({
-		owner: req.user._id
+		owner: req._user._id
 	})
 	.select('_id')
 	.exec(function (err, journeys) {
@@ -78,5 +79,51 @@ function getRating (req, res) {
 }
 
 function getRatingForJourney (req, res) {
+	models.JourneyPassenger.find({
+		journey: req.journey._id,
+		approved: true,
+		didApprove: true,
+		rated: true
+	})
+	.select('rating')
+	.exec(function (err, ratings) {
+		if (err) throw err;
 
+		var avSum = 0;
+		for (var i = 0; i < ratings.length; i++) {
+			avSum += ratings[i].rating;
+		}
+
+		res.send({
+			average: avSum / ratings.length
+		});
+	});
+}
+
+function getMutualFriends (req, res) {
+	console.log(req.user.userFriends, req._user.userFriends);
+	if (req.user.userFriends == null || req._user.userFriends == null) {
+		return res.send([]);
+	}
+
+	var mutual = [];
+	for (var i = 0; i < req.user.userFriends.length; i++) {
+		for (var x = 0; x < req._user.userFriends.length; x++) {
+			if (req.user.userFriends[i] == req._user.userFriends[x]) {
+				mutual.push(req.user.userFriends[i]);
+				break;
+			}
+		}
+	}
+
+	models.User.find({
+		id: {
+			$in: mutual
+		}
+	})
+	.exec(function (err, friends) {
+		if (err) throw err;
+
+		res.send(friends);
+	});
 }

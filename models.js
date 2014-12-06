@@ -10,7 +10,8 @@ exports.User = mongoose.model('User', {
 	picture: {
 		is_silhouette: Boolean,
 		url: String
-	}
+	},
+	userFriends: [String]
 });
 
 exports.UserDevice = mongoose.model('UserDevice', {

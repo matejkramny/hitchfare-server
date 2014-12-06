@@ -23,7 +23,8 @@ function register (req, res) {
 		picture: {
 			url: should(picture.url).be(String),
 			is_silhouette: should(picture.url).be(Boolean)
-		}
+		},
+		userFriends: req.body.userFriends
 	});
 
 	if (user.email == null || user.id == null || user.name == null) {
@@ -35,9 +36,11 @@ function register (req, res) {
 	}, function (err, preUser) {
 		if (preUser != null) {
 			req.login(preUser, function () {
-				res.status(204).end()
+				res.send({
+					_id: preUser._id
+				});
 			});
-			
+
 			return;
 		}
 
@@ -47,7 +50,9 @@ function register (req, res) {
 				if (err != null) {
 					res.status(500).end();
 				} else {
-					res.status(201).end();
+					res.send({
+						_id: user._id
+					});
 				}
 			});
 		});
