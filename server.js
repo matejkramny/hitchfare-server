@@ -60,9 +60,17 @@ app.use(passport.session());
 
 require('./api/register').router(app);
 app.get('/terms', function (req, res) {
+	res.set({
+		'Content-Type': 'text/html'
+	});
+
 	fs.createReadStream(__dirname + "/phempto_terms.html").pipe(res);
 });
 app.get('/privacy', function (req, res) {
+	res.set({
+		'Content-Type': 'text/html'
+	});
+
 	fs.createReadStream(__dirname + "/phempto_privacy.html").pipe(res);
 });
 
