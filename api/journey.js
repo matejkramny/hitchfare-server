@@ -54,14 +54,16 @@ function create (req, res) {
 	}
 
 	try {
-		journey.car = mongoose.Types.ObjectId(journey.car);
+		if (journey.car != null) {
+			journey.car = mongoose.Types.ObjectId(journey.car);
+		}
 	} catch (e) {
 		journey.car = null;
 	}
 
-	if ((journey.isDriver == true && journey.car == null) ||
+	if ((journey.isDriver === true && journey.car == null) ||
 		journey.isDriver == null ||
-		journey.availableSeats == null ||
+		(journey.isDriver === true && journey.availableSeats == null) ||
 		journey.start.date == null ||
 		journey.start.location == null ||
 		journey.end.location == null ||
