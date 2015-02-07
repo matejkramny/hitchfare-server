@@ -65,7 +65,7 @@ function create (req, res) {
 		journey.start.date == null ||
 		journey.start.location == null ||
 		journey.end.location == null ||
-		journey.price == null) {
+		(journey.isDriver == true && journey.price == null)) {
 		console.log("error:", journey);
 
 		return res.status(400).end();
