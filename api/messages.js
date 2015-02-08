@@ -24,12 +24,15 @@ function getMessages (req, res) {
 		list: req.messageList._id
 	})
 	.lean()
+	.sort('-sent')
 	.exec(function (err, messages) {
 		if (err) throw err;
 
+		console.log(messages);
 		for (var i = 0; i < messages.length; i++) {
 			messages[i].sent = (new Date(messages[i])).getTime() / 1000;
 		}
+		console.log(messages);
 
 		res.send(messages);
 	});
@@ -102,9 +105,8 @@ function sendMessage (req, res) {
 		return res.status(403).end();
 	}
 
-	console.log(req.user.name, "says:", req.body.message);
-
 	var message = new models.Message(req.body)
+	message.sent = new Date();
 	message.save(function (err) {
 		if (err != null) {
 			throw err;
@@ -126,7 +128,7 @@ function sendMessage (req, res) {
 		sendNotification(notification, req.user, message);
 
 		res.status(201).end();
-	})
+	});
 }
 
 function createList (req, res) {
