@@ -22,8 +22,14 @@ function getMessages (req, res) {
 
 	models.Message.find({
 		list: req.messageList._id
-	}).exec(function (err, messages) {
+	})
+	.lean()
+	.exec(function (err, messages) {
 		if (err) throw err;
+
+		for (var i = 0; i < messages.length; i++) {
+			messages[i].sent = (int)(Date(messages[i]).getTime() / 1000);
+		}
 
 		res.send(messages);
 	});
@@ -39,19 +45,24 @@ function getMessageLists (req, res) {
 				receiver: req.user._id
 			}
 		]
-	}).populate('sender receiver').lean().exec(function (err, list) {
+	})
+	.populate('sender receiver')
+	.lean()
+	.exec(function (err, list) {
 		if (err) throw err;
 
 		async.each(list, function (list, cb) {
 			models.Message.findOne({
 				list: list._id
-			}).sort('-sent').exec(function (err, message) {
-				console.log(list, message);
-
+			})
+			.sort('-sent')
+			.lean()
+			.exec(function (err, message) {
 				if (err || !message) {
 					list.lastMessage = null;
 				} else {
 					list.lastMessage = message;
+					list.lastMessage.sent = (int)(Date(list.lastMessage.sent).getTime() / 1000);
 				}
 
 				cb();
@@ -70,11 +81,15 @@ function getMessageList (req, res) {
 
 		models.Message.findOne({
 			list: req.messageList._id
-		}).sort('-sent').exec(function (err, message) {
+		})
+		.lean()
+		.sort('-sent')
+		.exec(function (err, message) {
 			if (err || !message) {
 				req.messageList.lastMessage = null;
 			} else {
 				req.messageList.lastMessage = message;
+				req.messageList.lastMessage.sent = (int)(Date(req.messageList.lastMessage.sent).getTime() / 1000);
 			}
 
 			res.send(req.messageList);
