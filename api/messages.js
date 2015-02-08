@@ -28,7 +28,7 @@ function getMessages (req, res) {
 		if (err) throw err;
 
 		for (var i = 0; i < messages.length; i++) {
-			messages[i].sent = (int)(Date(messages[i]).getTime() / 1000);
+			messages[i].sent = Date(messages[i]).getTime() / 1000;
 		}
 
 		res.send(messages);
@@ -62,7 +62,7 @@ function getMessageLists (req, res) {
 					list.lastMessage = null;
 				} else {
 					list.lastMessage = message;
-					list.lastMessage.sent = (int)(Date(list.lastMessage.sent).getTime() / 1000);
+					list.lastMessage.sent = Date(list.lastMessage.sent).getTime() / 1000;
 				}
 
 				cb();
@@ -89,7 +89,7 @@ function getMessageList (req, res) {
 				req.messageList.lastMessage = null;
 			} else {
 				req.messageList.lastMessage = message;
-				req.messageList.lastMessage.sent = (int)(Date(req.messageList.lastMessage.sent).getTime() / 1000);
+				req.messageList.lastMessage.sent = Date(req.messageList.lastMessage.sent).getTime() / 1000;
 			}
 
 			res.send(req.messageList);
