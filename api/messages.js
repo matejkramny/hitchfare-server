@@ -24,15 +24,13 @@ function getMessages (req, res) {
 		list: req.messageList._id
 	})
 	.lean()
-	.sort('-sent')
+	.sort('sent')
 	.exec(function (err, messages) {
 		if (err) throw err;
 
-		console.log(messages);
 		for (var i = 0; i < messages.length; i++) {
-			messages[i].sent = (new Date(messages[i])).getTime() / 1000;
+			messages[i].sent = (new Date(messages[i].sent)).getTime() / 1000;
 		}
-		console.log(messages);
 
 		res.send(messages);
 	});
