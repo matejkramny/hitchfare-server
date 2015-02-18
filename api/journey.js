@@ -10,6 +10,7 @@ exports.router = function (app) {
 	app.post('/journeys', create)
 		.get('/journeys', getAll)
 		.get('/journeys/my', getMy)
+		.get('/journeys/onlyMy', getOnlyMy)
 		.get('/journeys/requests', getJourneysRequests)
 		.get('/journeys/myrequests', getMyJourneyRequests)
 		.get('/journeys/user/:user', getUserJourneys)
@@ -25,8 +26,6 @@ exports.router = function (app) {
 }
 
 function create (req, res) {
-	console.log(req.body);
-
 	var journey = {
 		owner: req.user._id,
 		car: should(req.body.car).be(String, true),
@@ -81,8 +80,6 @@ function create (req, res) {
 }
 
 function updateJourney (req, res) {
-	console.log(req.body);
-
 	var journey = req.journey;
 	journey.car = should(req.body.car).be(String, true);
 	journey.isDriver = should(req.body.isDriver).be(Boolean);
@@ -147,7 +144,6 @@ function getAll (req, res) {
 
 	var isLocationQuery = false;
 
-	console.log(req.query, req.body)
 	if (typeof req.query.lat == 'string' && typeof req.query.lng == 'string' && typeof req.query.startLocation != 'string') {
 		isLocationQuery = true;
 		var lat = parseFloat(req.query.lat);
@@ -180,7 +176,8 @@ function getAll (req, res) {
 		query = query.sort('-start.date');
 	}
 
-	query.populate('owner')
+	query
+	.populate('owner car')
 	.exec(function (err, journeys) {
 		if (err) throw err;
 
@@ -214,7 +211,7 @@ function getMy (req, res) {
 			]
 		})
 		.sort('-start.date')
-		.populate('owner')
+		.populate('owner car')
 		.exec(function (err, journeys) {
 			if (err) throw err;
 
@@ -223,18 +220,36 @@ function getMy (req, res) {
 	});
 }
 
+function getOnlyMy (req, res) {
+	models.Journey.find({
+			owner: req.user._id
+		})
+		.sort('-start.date')
+		.populate('owner car')
+		.exec(function (err, journeys) {
+			if (err) throw err;
+
+			res.send(journeys);
+		});
+}
+
 function getUserJourneys (req, res) {
 	models.Journey.find({
 		owner: req._user._id
 	})
 	.sort('-start.date')
-	.populate('owner')
+	.populate('owner car')
 	.exec(function (err, journeys) {
 		res.send(journeys).end();
 	});
 }
 
 function requestJoinJourney (req, res) {
+	// when journey is not in driver mode and the body doesn't request the requester's journey id
+	if (req.journey.isDriver === false && !req.body.journey_id) {
+		return res.status(400).end();
+	}
+
 	// check if user already passenger
 	models.JourneyPassenger.findOne({
 		journey: req.journey._id,
@@ -251,12 +266,17 @@ function requestJoinJourney (req, res) {
 			user: req.user._id
 		});
 
+		if (req.journey.isDriver === false) {
+			passenger.passengerJourney = req.body.journey_id;
+		}
+
 		passenger.save(function (err) {
 			if (err) throw err;
 
 			res.status(201).end();
 		});
 
+		// push a notification to the owner of the journey
 		req.journey.populate('owner', function (err) {
 			if (err) throw err;
 
@@ -344,6 +364,60 @@ function approvePassenger (req, res) {
 
 	if (req.journeyPassenger.didApprove == true) {
 		return res.status(400).end();
+	}
+
+	if (req.journey.isDriver === false) {
+		// Do magic. Reverse this request the other way..
+		models.Journey.findOne({
+			owner: req.journeyPassenger.user,
+			_id: req.journeyPassenger.passengerJourney
+		}, function (err, journey) {
+			if (err || !journey) {
+				console.log(req.journeyPassenger)
+				return res.status(400).end();
+			}
+
+			var passengerRequest = new models.JourneyPassenger({
+				didApprove: true,
+				approved: true,
+				approvedWhen: new Date,
+				user: req.user._id,
+				journey: journey._id
+			});
+
+			async.parallel([
+				function (cb) {
+					passengerRequest.save(cb);
+				},
+				function (cb) {
+					models.JourneyPassenger.remove({
+						_id: req.journeyPassenger._id
+					}, cb);
+				},
+				function (cb) {
+					models.Journey.remove({
+						_id: req.journey._id
+					}, cb);
+				}
+			], function (err) {
+				if (err) throw err;
+
+				// reduce number of seats..
+				models.Journey.update({
+					_id: journey._id
+				}, {
+					$inc: {
+						availableSeats: -1
+					}
+				}, function (err) {
+					if (err) throw err;
+				});
+
+				res.status(204).end();
+			});
+		});
+
+		return;
 	}
 
 	if (req.journey.availableSeats <= 0) {

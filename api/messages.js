@@ -71,6 +71,27 @@ function getMessageLists (req, res) {
 		}, function (err) {
 			if (err) throw err;
 
+			list.sort(function (a, b) {
+				if (a.lastMessage == null && b.lastMessage == null) {
+					return 0;
+				}
+
+				if (a.lastMessage == null) {
+					return 1;
+				} else if (b.lastMessage == null) {
+					return -1;
+				}
+
+				if (a.lastMessage.sent < b.lastMessage.sent) {
+					return 1;
+				}
+				if (a.lastMessage.sent > b.lastMessage.sent) {
+					return -1;
+				}
+
+				return 0;
+			});
+
 			res.send(list);
 		});
 	});

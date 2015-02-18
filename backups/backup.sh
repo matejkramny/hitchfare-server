@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export AWS_ACCESS_KEY_ID=""
+export AWS_SECRET_ACCESS_KEY=""
+export AWS_DEFAULT_REGION="eu-west-1"
+
+mongodump --host mongodb --db fareshout
+
+aws s3 cp dump "s3://fareshout-backups/`date +\"%d-%m-%Y-%T\"`" --recursive

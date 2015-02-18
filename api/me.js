@@ -6,6 +6,7 @@ exports.router = function (app) {
 	app.get('/me', getSelf)
 		.get('/user/:user', getUser)
 		.get('/user/:user/mutualFriends', getMutualFriends)
+		.get('/user/:user/cars', getUserCars)
 		.put('/device/:token', addDevice)
 		.get('/rating/user/:user', getRating)
 		.get('/rating/journey/:journey_id', getRatingForJourney);
@@ -101,29 +102,60 @@ function getRatingForJourney (req, res) {
 }
 
 function getMutualFriends (req, res) {
-	console.log(req.user.userFriends, req._user.userFriends);
 	if (req.user.userFriends == null || req._user.userFriends == null) {
 		return res.send([]);
 	}
 
-	var mutual = [];
-	for (var i = 0; i < req.user.userFriends.length; i++) {
-		for (var x = 0; x < req._user.userFriends.length; x++) {
-			if (req.user.userFriends[i] == req._user.userFriends[x]) {
-				mutual.push(req.user.userFriends[i]);
-				break;
+	// check that user has journeys with the user in the past
+	models.Journey.find({
+		owner: req._user._id
+	}).select('_id').lean().exec(function (err, journeys) {
+		var ids = [];
+		for (var i = 0; i < journeys.length; i++) {
+			ids.push(journeys[i]._id);
+		}
+
+		models.JourneyPassenger.findOne({
+			user: req.user._id,
+			approved: true,
+			didApprove: true,
+			journey: {
+				$in: ids
 			}
-		}
-	}
+		}).select('').lean().exec(function (err, journey) {
+			if (err || !journey) {
+				// not yet a journey..
+				return res.send([]).end();
+			}
 
-	models.User.find({
-		id: {
-			$in: mutual
-		}
-	})
-	.exec(function (err, friends) {
-		if (err) throw err;
+			var mutual = [];
+			for (var i = 0; i < req.user.userFriends.length; i++) {
+				for (var x = 0; x < req._user.userFriends.length; x++) {
+					if (req.user.userFriends[i] == req._user.userFriends[x]) {
+						mutual.push(req.user.userFriends[i]);
+						break;
+					}
+				}
+			}
 
-		res.send(friends);
+			models.User.find({
+				id: {
+					$in: mutual
+				}
+			})
+			.exec(function (err, friends) {
+				if (err) throw err;
+
+				res.send(friends);
+			});
+		});
+	});
+}
+
+function getUserCars (req, res) {
+	models.Car.find({
+		owner: req._user._id
+	}).sort('-_id').exec(function (err, cars) {
+		res.send(cars).end();
 	});
 }

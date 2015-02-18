@@ -36,6 +36,22 @@ mongoose.connect(process.env.DB || 'mongodb://127.0.0.1/fareshout')
 app.set('x-powered-by', false);
 
 app.use(require('morgan')('dev'));
+
+app.get('/terms', function (req, res) {
+	res.set({
+		'Content-Type': 'text/html'
+	});
+
+	fs.createReadStream(__dirname + "/phempto_terms.html").pipe(res);
+});
+app.get('/privacy', function (req, res) {
+	res.set({
+		'Content-Type': 'text/html'
+	});
+
+	fs.createReadStream(__dirname + "/phempto_privacy.html").pipe(res);
+});
+
 app.use(require('body-parser').json({
 	strict: true
 }));
@@ -59,20 +75,6 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 require('./api/register').router(app);
-app.get('/terms', function (req, res) {
-	res.set({
-		'Content-Type': 'text/html'
-	});
-
-	fs.createReadStream(__dirname + "/phempto_terms.html").pipe(res);
-});
-app.get('/privacy', function (req, res) {
-	res.set({
-		'Content-Type': 'text/html'
-	});
-
-	fs.createReadStream(__dirname + "/phempto_privacy.html").pipe(res);
-});
 
 app.use(function (req, res, next) {
 	if (!req.user) {

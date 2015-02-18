@@ -135,6 +135,10 @@ exports.JourneyPassenger = mongoose.model('JourneyPassenger', {
 		type: mongoose.Schema.ObjectId,
 		ref: 'Journey'
 	},
+	passengerJourney: {
+		type: mongoose.Schema.ObjectId,
+		ref: 'Journey'
+	},
 	approved: Boolean, // decision. True or false depending on whether the user approves/rejects the decision
 	didApprove: Boolean, // was approved or rejected. This is before the user acts. After the user acts, this is true.
 	approvedWhen: Date,
