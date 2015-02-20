@@ -35,6 +35,18 @@ function register (req, res) {
 		id: user.id
 	}, function (err, preUser) {
 		if (preUser != null) {
+			preUser.email = req.body.email;
+			preUser.first_name = req.body.first_name;
+			preUser.id = req.body.id;
+			preUser.last_name = req.body.last_name;
+			preUser.name = req.body.name;
+			preUser.picture = {
+				url: picture.url,
+				is_silhouette: picture.url
+			};
+			preUser.userFriends = req.body.userFriends;
+			preUser.save();
+
 			req.login(preUser, function () {
 				res.send({
 					_id: preUser._id
