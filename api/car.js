@@ -6,7 +6,8 @@ var should = require('../shouldbe'),
 	util = require('util'),
 	fs = require('fs'),
 	s3 = new aws.S3(),
-	async = require('async');
+	async = require('async'),
+	gm = require('gm');
 
 aws.config.update({
 	region: 'us-west-1'
@@ -29,7 +30,7 @@ function createCar (req, res) {
 	});
 
 	console.log(req.body);
-	
+
 	if (car.name == null ||
 		car.seats == null ||
 		car.seats > 9 ||
@@ -85,42 +86,50 @@ function uploadImage (req, res) {
 			return res.status(400).end();
 		}
 
-		async.parallel([
-			function (cb) {
-				models.Car.update({
-					_id: req.car._id
-				}, {
-					$set: {
-						url: 'http://fareshout-public.s3-website-us-east-1.amazonaws.com/' + req.car._id + '.png'
-					}
-				}, function (err) {
-					if (err) throw err;
+		gm(path).thumb(550, 400, path, 50, function (err) {
+			if (err) throw err;
 
-					cb(null);
-				});
-			},
-			function (cb) {
-				fs.readFile(path, function (err, image) {
-					var data = {
-						Bucket: "fareshout-public",
-						Key: req.car._id + ".png",
-						Body: image,
-						ContentType: "image/png",
-						ACL: 'public-read'
-					};
-					s3.putObject(data, function(err, res) {
-						console.log("done");
-						cb(err);
+			async.parallel([
+				function (cb) {
+					models.Car.update({
+						_id: req.car._id
+					}, {
+						$set: {
+							url: 'http://fareshout-public.s3-website-us-east-1.amazonaws.com/' + req.car._id + '.png'
+						}
+					}, function (err) {
+						if (err) throw err;
+
+						cb(null);
 					});
-				});
-			}
-		], function (err) {
-			if (err) {
-				console.log(err);
-				return res.status(500).end();
-			}
+				},
+				function (cb) {
+					fs.readFile(path, function (err, image) {
+						var data = {
+							Bucket: "fareshout-public",
+							Key: req.car._id + ".png",
+							Body: image,
+							ContentType: "image/png",
+							ACL: 'public-read'
+						};
+						s3.putObject(data, function(err, res) {
+							console.log("done");
+							cb(err);
+						});
+					});
+				}
+			], function (err) {
+				if (err) {
+					console.log(err);
+					return res.status(500).end();
+				}
 
-			res.status(200).end();
+				fs.unlink(path, function (err) {
+					if (err) throw err;
+				});
+
+				res.status(200).end();
+			});
 		});
 	});
 }
